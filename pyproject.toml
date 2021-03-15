@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "sage-maker"
+version = "0.1.0"
+description = ""
+authors = ["chrisaddy <chris.william.addy@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pytorch-lightning = "^1.2.3"
+Pillow = "^8.1.2"
+alive-progress = "^1.6.2"
+
+[tool.poetry.dev-dependencies]
+jupyter = "^1.0.0"
+black = {version = "^20.8b1", allow-prereleases = true}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
