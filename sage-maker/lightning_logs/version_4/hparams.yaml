@@ -1,0 +1,5 @@
+input_channels: 3
+input_height: 10
+input_width: 10
+latent_dim: 32
+learning_rate: 0.0002
