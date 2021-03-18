@@ -83,12 +83,11 @@ class SagesDataModule(zeus.LightningDataModule):
             # convert grayscale to RGB
             img = Image.open(io.BytesIO(image_data))
             if img.mode != "RGB":
-                pass
-                # arr = np.asarray(img)
-                # assert len(arr.shape) == 2
-                # arr = np.stack([arr] * 3, axis=-1)
-                # rgb_img = Image.fromarray(arr, mode="RGB")
-                # rgb_img.save(image_file)
+                arr = np.asarray(img)
+                assert len(arr.shape) == 2
+                arr = np.stack([arr] * 3, axis=-1)
+                rgb_img = Image.fromarray(arr, mode="RGB")
+                rgb_img.save(image_file)
             else:
                 open(image_file, "wb").write(image_data)
             img.close()
@@ -305,7 +304,7 @@ class GAN(zeus.LightningModule):
 
 if __name__ == "__main__":
     tf = transforms.Compose([transforms.ToTensor()])
-    data = SagesDataModule(download_threads=128, transform=tf)
-    model = GAN(8, 3, 5)
+    data = SagesDataModule(download_threads=32, transform=tf)
+    model = GAN(3, 256, 256)
     trainer = zeus.Trainer(max_epochs=5)
     trainer.fit(model, data)

@@ -1,2 +1,3 @@
-setup:
-	poetry run download.py
+
+train:
+	cd sage-maker && poetry run python sages.py
