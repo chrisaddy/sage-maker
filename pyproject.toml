@@ -15,6 +15,7 @@ matplotlib = "^3.3.4"
 sklearn = "^0.0"
 gym = "^0.18.0"
 pytorch-lightning = "^1.2.3"
+mlflow = "^1.14.1"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0.0"

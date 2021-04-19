@@ -1,5 +1,8 @@
-input_channels: 3
-input_height: 10
-input_width: 10
-latent_dim: 32
-learning_rate: 0.0002
+b1: 0.5
+b2: 0.999
+batch_size: 64
+channels: 3
+height: 256
+latent_dim: 100
+lr: 0.0002
+width: 256

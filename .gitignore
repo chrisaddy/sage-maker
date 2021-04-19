@@ -1,4 +1,4 @@
 .vscode
 /kaokore*
 **/*.jpg
-sage-maker/lightning_logs/
+sage-maker/lightning_logs/*

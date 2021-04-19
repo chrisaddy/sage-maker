@@ -11,13 +11,20 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 import pandas as pd
 from typing import Optional
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import torch
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from collections import OrderedDict
+from pytorch_lightning.loggers import MLFlowLogger
+
+
+mlf_logger = MLFlowLogger(
+    experiment_name="addy-sage-maker",
+    tracking_uri="https://data-dev-internalapi.penngineering.io/flow/",
+)
 
 
 class Kaokore(Dataset):
@@ -113,37 +120,11 @@ class SagesDataModule(zeus.LightningDataModule):
                 bar()
 
     def setup(self, stage: Optional[str] = None):  # what does stage do?
-        n_images = len(
-            os.listdir(self.images_dir)
-        )  # how does this work across devices?
-        n_train = int(n_images * 0.8)
-        n_val = n_images - n_train
-        if stage == "fit" or stage is None:
-            data_full = Kaokore(self.images_dir, train=True, transform=self.transform)
-            self.sages_train, self.sages_val = random_split(
-                data_full,
-                [n_train, n_val],
-                generator=torch.Generator().manual_seed(42),
-            )
-
-        if stage == "test" or stage is None:
-            self.sages_test = Kaokore(
-                self.images_dir, train=False, transform=self.transform
-            )
+        self.train_data = Kaokore(self.images_dir, train=True, transform=self.transform)
 
     def train_dataloader(self):
         return DataLoader(
-            self.sages_train, batch_size=self.batch_size, num_workers=self.workers
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.sages_val, batch_size=self.batch_size, num_workers=self.workers
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.sages_test, batch_size=self.batch_size, num_workers=self.workers
+            self.train_data, batch_size=self.batch_size, num_workers=self.workers
         )
 
 
@@ -179,11 +160,11 @@ class Discriminator(nn.Module):
         super().__init__()
 
         self.model = nn.Sequential(
-            nn.Linear(int(np.prod(img_shape)), 512),
+            nn.Linear(int(np.prod(img_shape)), 128),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 256),
+            nn.Linear(128, 64),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(256, 1),
+            nn.Linear(64, 1),
             nn.Sigmoid(),
         )
 
@@ -243,7 +224,9 @@ class GAN(zeus.LightningModule):
             # log sampled images
             sample_imgs = self.generated_imgs[:6]
             grid = torchvision.utils.make_grid(sample_imgs)
-            self.logger.experiment.add_image("generated_images", grid, 0)
+            # self.logger.experiment.log_image(
+            #     image=grid, artifact_file="generated_images/sample.jpg"
+            # )
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
@@ -252,11 +235,9 @@ class GAN(zeus.LightningModule):
 
             # adversarial loss is binary cross-entropy
             g_loss = self.adversarial_loss(self.discriminator(self(z)), valid)
-            tqdm_dict = {"g_loss": g_loss}
-            output = OrderedDict(
-                {"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
+            self.log(
+                "adversarial loss", g_loss, on_step=True, on_epoch=True, prog_bar=True
             )
-            return output
 
         # train discriminator
         if optimizer_idx == 1:
@@ -278,11 +259,9 @@ class GAN(zeus.LightningModule):
 
             # discriminator loss is the average of these
             d_loss = (real_loss + fake_loss) / 2
-            tqdm_dict = {"d_loss": d_loss}
-            output = OrderedDict(
-                {"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict}
+            self.log(
+                "discriminator loss", d_loss, on_step=True, on_epoch=True, prog_bar=True
             )
-            return output
 
     def configure_optimizers(self):
         lr = self.hparams.lr
@@ -299,12 +278,14 @@ class GAN(zeus.LightningModule):
         # log sampled images
         sample_imgs = self(z)
         grid = torchvision.utils.make_grid(sample_imgs)
-        self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
+        # self.logger.experiment.log_image(
+        #     image=grid, artifact_file="generated_images/sample.jpg"
+        # )
 
 
 if __name__ == "__main__":
     tf = transforms.Compose([transforms.ToTensor()])
     data = SagesDataModule(download_threads=32, transform=tf)
     model = GAN(3, 256, 256)
-    trainer = zeus.Trainer(max_epochs=5)
+    trainer = zeus.Trainer(max_epochs=50)
     trainer.fit(model, data)
